@@ -1,0 +1,49 @@
+elasticsearchHosts: https://elasticsearch-master.elasticsearch:9200
+extraEnvs:
+- name: ELASTICSEARCH_USERNAME
+  valueFrom:
+    secretKeyRef:
+      key: username
+      name: elastic-credentials
+- name: ELASTICSEARCH_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      key: password
+      name: elastic-credentials
+- name: KIBANA_ENCRYPTION_KEY
+  valueFrom:
+    secretKeyRef:
+      key: encryptionkey
+      name: kibana
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+  enabled: true
+  hosts:
+  - host: kibana.kiss-dev.commonground.nu
+    paths:
+    - path: /
+  tls:
+  - hosts:
+    - kibana.kiss-dev.commonground.nu
+    secretName: kibana-tls
+kibanaConfig:
+  kibana.yml: | 
+    server.ssl:
+        enabled: true  
+        key: /usr/share/kibana/config/certs/elastic-certificate.pem
+        certificate: /usr/share/kibana/config/certs/elastic-certificate.pem
+    elasticsearch.ssl:
+        certificateAuthorities: /usr/share/kibana/config/certs/elastic-certificate.pem
+        verificationMode: certificate
+    xpack.security:
+        encryptionKey: ${KIBANA_ENCRYPTION_KEY}
+    server.publicBaseUrl: https://kibana.kiss-dev.commonground.nu:443
+    enterpriseSearch.host: 'https://enterprise-search-ent-http:3002'
+    enterpriseSearch.ssl.verificationMode: none
+protocol: https
+secretMounts:
+- name: elastic-certificate-pem
+  path: /usr/share/kibana/config/certs
+  secretName: elastic-certificate-pem
