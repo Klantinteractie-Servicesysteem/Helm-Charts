@@ -1,0 +1,110 @@
+# Default values for elasticstack.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+credentials:
+  username: elastic
+  password: changeme
+  encryptionKey: this_is_an_example_key_it_should_be_50_characsters
+
+certificates:
+  p12: files/certificates.p12
+  crt: files/certificates.crt
+  pem: files/certificates.pem
+
+elasticHost: elastic.cluster
+kibanaHost: kibana.cluster
+
+#Configuration for ElasticSearch
+elasticsearch:
+  esConfig:
+    elasticsearch.yml: |
+      xpack.security.enabled: true
+      xpack.security.transport.ssl.enabled: true
+      xpack.security.transport.ssl.verification_mode: certificate
+      xpack.security.transport.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
+      xpack.security.transport.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
+      xpack.security.http.ssl.enabled: true
+      xpack.security.http.ssl.truststore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
+      xpack.security.http.ssl.keystore.path: /usr/share/elasticsearch/config/certs/elastic-certificates.p12
+
+  extraEnvs:
+    - name: ELASTIC_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: elastic-credentials
+  ingress:
+    enabled: true
+    hosts:
+      - host: elastic.cluster
+        paths:
+          - path: /
+    tls:
+      - hosts:
+          - elastic.cluster
+        secretName: elastic-tls
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+      cert-manager.io/cluster-issuer: letsencrypt
+  protocol: https
+  roles:
+    data: "true"
+    ingest: "true"
+    master: "true"
+  secretMounts:
+    - name: elastic-certificates
+      path: /usr/share/elasticsearch/config/certs
+      secretName: elastic-certificates
+
+#Configuration for Kibana
+kibana:
+  elasticsearchHosts: https://elasticsearch-master.elasticsearch:9200
+  extraEnvs:
+    - name: ELASTICSEARCH_USERNAME
+      valueFrom:
+        secretKeyRef:
+          key: username
+          name: elastic-credentials
+    - name: ELASTICSEARCH_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          key: password
+          name: elastic-credentials
+    - name: KIBANA_ENCRYPTION_KEY
+      valueFrom:
+        secretKeyRef:
+          key: encryptionkey
+          name: kibana
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+      nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    enabled: true
+    hosts:
+      - host: kibana.cluster
+        paths:
+          - path: /
+    tls:
+      - hosts:
+          - kibana.cluster
+        secretName: kibana-tls
+  kibanaConfig:
+    kibana.yml: |
+      server.ssl:
+          enabled: true  
+          key: /usr/share/kibana/config/certs/elastic-certificate.pem
+          certificate: /usr/share/kibana/config/certs/elastic-certificate.pem
+      elasticsearch.ssl:
+          certificateAuthorities: /usr/share/kibana/config/certs/elastic-certificate.pem
+          verificationMode: certificate
+      xpack.security:
+          encryptionKey: ${KIBANA_ENCRYPTION_KEY}
+      server.publicBaseUrl: https://kibana.kiss-dev.commonground.nu:443
+      enterpriseSearch.host: 'https://enterprise-search-ent-http:3002'
+      enterpriseSearch.ssl.verificationMode: none
+  protocol: https
+  secretMounts:
+    - name: elastic-certificate-pem
+      path: /usr/share/kibana/config/certs
+      secretName: elastic-certificate-pem
+

@@ -1,0 +1,12 @@
+dependencies:
+- name: eck-operator
+  repository: https://helm.elastic.co
+  version: 2.2.0
+- name: elasticsearch
+  repository: https://helm.elastic.co
+  version: 7.17.3
+- name: kibana
+  repository: https://helm.elastic.co
+  version: 7.17.3
+digest: sha256:061f9984d798e23891b8a5452dd748ea78923b1109fe0b8d81fdf03fce588422
+generated: "2022-06-02T16:47:10.974249997+02:00"
